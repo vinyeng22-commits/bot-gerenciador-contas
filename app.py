@@ -52,7 +52,40 @@ def iniciar_bot_em_background():
 bot_proc = iniciar_bot_em_background()
 
 # ==========================================
-# 2. BARRA LATERAL (SIDEBAR)
+# 2. AUTENTICAÇÃO DE ACESSO
+# ==========================================
+AUTH_USER = st.secrets.get("ADMIN_USER", "admin") if hasattr(st, "secrets") and "ADMIN_USER" in st.secrets else os.getenv("ADMIN_USER", "admin")
+AUTH_PASS = str(st.secrets.get("ADMIN_PASSWORD", "32166137") if hasattr(st, "secrets") and "ADMIN_PASSWORD" in st.secrets else os.getenv("ADMIN_PASSWORD", "32166137"))
+
+if "autenticado" not in st.session_state:
+    st.session_state["autenticado"] = False
+
+if not st.session_state["autenticado"]:
+    col_l1, col_l2, col_l3 = st.columns([1, 1.2, 1])
+    with col_l2:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.image("https://cdn-icons-png.flaticon.com/512/2344/2344132.png", width=64)
+        st.title("Acesso Restrito")
+        st.caption("Painel de Controle Financeiro & Bot Telegram")
+
+        with st.form("form_login", clear_on_submit=False):
+            usuario_input = st.text_input("👤 Usuário:", placeholder="Digite o usuário")
+            senha_input = st.text_input("🔑 Senha:", type="password", placeholder="Digite a senha")
+            btn_login = st.form_submit_button("Entrar no Painel", use_container_width=True)
+
+            if btn_login:
+                if usuario_input.strip() == AUTH_USER and senha_input.strip() == AUTH_PASS:
+                    st.session_state["autenticado"] = True
+                    st.success("✅ Autenticado com sucesso!")
+                    st.rerun()
+                else:
+                    st.error("❌ Usuário ou senha incorretos.")
+
+        st.info("🔒 Informe seu usuário e senha autorizados para acessar o sistema.")
+    st.stop()
+
+# ==========================================
+# 3. BARRA LATERAL (SIDEBAR)
 # ==========================================
 st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2344/2344132.png", width=70)
 st.sidebar.title("Gerenciador de Contas")
@@ -66,6 +99,11 @@ else:
     if st.sidebar.button("🔄 Reiniciar Bot"):
         st.cache_resource.clear()
         st.rerun()
+
+st.sidebar.markdown(f"👤 Logado como: **{AUTH_USER}**")
+if st.sidebar.button("🚪 Sair (Logout)", use_container_width=True):
+    st.session_state["autenticado"] = False
+    st.rerun()
 
 st.sidebar.markdown("---")
 
@@ -84,7 +122,7 @@ sel_mes = st.sidebar.selectbox("📅 Selecione o Mês:", list(meses_opcoes.keys(
 sel_ano = st.sidebar.number_input("Ano:", min_value=2024, max_value=2035, value=ano_atual, step=1)
 
 mes_ano_ref = f"{sel_ano}-{sel_mes:02d}"
-chat_id = "-1003987623111"
+chat_id = config.TELEGRAM_GROUP_ID if config.TELEGRAM_GROUP_ID else "-1003987623111"
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📱 Comandos no Telegram")
