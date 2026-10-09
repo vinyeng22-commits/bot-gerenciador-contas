@@ -122,7 +122,7 @@ sel_mes = st.sidebar.selectbox("📅 Selecione o Mês:", list(meses_opcoes.keys(
 sel_ano = st.sidebar.number_input("Ano:", min_value=2024, max_value=2035, value=ano_atual, step=1)
 
 mes_ano_ref = f"{sel_ano}-{sel_mes:02d}"
-chat_id = config.TELEGRAM_GROUP_ID if config.TELEGRAM_GROUP_ID else "-1003987623111"
+chat_id = str(getattr(config, "TELEGRAM_GROUP_ID", None) or getattr(config, "SUPERGROUP_ID", None) or "-1003987623111")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📱 Comandos no Telegram")
@@ -181,12 +181,13 @@ st.markdown("---")
 # ==========================================
 # 4. ABAS DE VISUALIZAÇÃO E AÇÕES
 # ==========================================
-tab_cartoes, tab_fixos, tab_invest, tab_novo_lancamento, tab_nova_conta = st.tabs([
+tab_cartoes, tab_fixos, tab_invest, tab_novo_lancamento, tab_nova_conta, tab_backup = st.tabs([
     "💳 Faturas de Cartão",
     "🔒 Contas Fixas & Variáveis",
     "📈 Investimentos",
     "➕ Lançar Valor Rápido",
     "📝 Cadastrar Conta",
+    "💾 Backup & Dados",
 ])
 
 # ------------------------------------------
@@ -335,4 +336,43 @@ with tab_nova_conta:
                     categoria=categoria_sel,
                 )
                 st.success(f"Conta '{nome_conta}' cadastrada com sucesso (ID: {cid})!")
+                st.rerun()
+
+# ------------------------------------------
+# TAB 6: BACKUP E GESTÃO DOS DADOS
+# ------------------------------------------
+with tab_backup:
+    st.subheader("💾 Backup e Gestão dos Dados")
+    st.markdown(
+        """
+        Aqui você pode baixar uma cópia do seu banco de dados atual (`contas.db`) para o seu computador, 
+        ou enviar um backup anterior para restaurar todos os pagamentos e valores cadastrados.
+        """
+    )
+    col_bk1, col_bk2 = st.columns(2)
+    with col_bk1:
+        st.markdown("#### ⬇️ Baixar Cópia Atual (Backup)")
+        caminho_db = database.DB_PATH
+        if os.path.exists(caminho_db):
+            with open(caminho_db, "rb") as f_db:
+                dados_db = f_db.read()
+            st.download_button(
+                label="📥 Fazer Download de contas.db",
+                data=dados_db,
+                file_name=f"contas_backup_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.db",
+                mime="application/x-sqlite3",
+                use_container_width=True,
+            )
+            st.caption(f"Tamanho do arquivo: {len(dados_db) / 1024:.1f} KB")
+        else:
+            st.warning("Banco de dados ainda não foi criado.")
+
+    with col_bk2:
+        st.markdown("#### ⬆️ Restaurar Banco de Dados")
+        arquivo_upload = st.file_uploader("Selecione um arquivo de backup (.db):", type=["db", "sqlite"])
+        if arquivo_upload is not None:
+            if st.button("⚠️ Confirmar Restauração", type="primary", use_container_width=True):
+                with open(caminho_db, "wb") as f_out:
+                    f_out.write(arquivo_upload.getvalue())
+                st.success("✅ Banco de dados restaurado com sucesso! Atualizando...")
                 st.rerun()

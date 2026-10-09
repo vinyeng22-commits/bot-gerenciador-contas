@@ -40,6 +40,9 @@ if _raw_group:
 
 TIMEZONE = os.getenv("TIMEZONE", "America/Sao_Paulo")
 
+TELEGRAM_BOT_TOKEN = BOT_TOKEN
+TELEGRAM_GROUP_ID = str(SUPERGROUP_ID if SUPERGROUP_ID is not None else (GROUP_ID if GROUP_ID is not None else (_raw_group or "-1003987623111")))
+
 
 def is_chat_authorized(chat_id: int, chat_type: str) -> bool:
     """

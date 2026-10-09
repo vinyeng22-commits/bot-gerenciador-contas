@@ -11,19 +11,19 @@ except Exception:
 
 MES_ANO = "2026-10"
 
-# 11 Cartões de Crédito (Faturas do Mês)
+# 11 Cartões de Crédito (Faturas do Mês com status de pagamentos reais)
 CARTOES = [
-    ("CT C6", 1, 23.00),
-    ("CT RecargaPay vi", 6, 1.00),
-    ("CT MERC PAGO", 10, 1.00),
-    ("CT INTER", 11, 1.00),
-    ("CT NUBANK", 14, 1.00),
-    ("CT BANESE", 15, 1.00),
-    ("CT CAIXA", 15, 1.00),
-    ("CT BRBCARD", 17, 1.00),
-    ("CT CLICK", 20, 1.00),
-    ("CT PICPAY", 20, 1.00),
-    ("CT BRADESCO", 28, 1.00),
+    ("CT C6", 1, 150.00, 23.00, 1, "06/10/2026 16:58"),
+    ("CT RecargaPay vi", 6, 1950.00, 1.00, 1, "06/10/2026 16:58"),
+    ("CT MERC PAGO", 10, 1.00, 1.00, 0, None),
+    ("CT INTER", 11, 1.00, 1.00, 0, None),
+    ("CT NUBANK", 14, 3500.00, 1.00, 0, None),
+    ("CT BANESE", 15, 1.00, 1.00, 0, None),
+    ("CT CAIXA", 15, 100.00, 1.00, 0, None),
+    ("CT BRBCARD", 17, 1.00, 1.00, 0, None),
+    ("CT CLICK", 20, 1.00, 1.00, 0, None),
+    ("CT PICPAY", 20, 1.00, 1.00, 0, None),
+    ("CT BRADESCO", 28, 1.00, 1.00, 0, None),
 ]
 
 # 6 Investimentos / Consórcios (Dia 10, Categoria 'Investimento', Iniciam em 0.00 com referência)
@@ -47,21 +47,21 @@ FIXOS_VALOR_DATA_FIXA = [
     ("ACORDO CONDOMINIO", 10, 1750.00, 1750.00),
 ]
 
-# 14 Contas Variáveis / Acumuladoras (Categoria 'Fixo', iniciam em 0.00 no mês)
+# 14 Contas Variáveis / Acumuladoras (Categoria 'Fixo' com valores já lançados)
 FIXOS_VARIAVEIS = [
-    ("LANCHE/ALMOÇO LEVY", 1, 0.00, 400.00),
+    ("LANCHE/ALMOÇO LEVY", 1, 10.00, 400.00),
     ("LANCHE GABRIEL", 1, 0.00, 200.00),
     ("COMBUSTIVEL", 1, 0.00, 600.00),
-    ("MERCADO CASAS", 1, 0.00, 1500.00),
-    ("ALMOÇO", 1, 0.00, 400.00),
-    ("AGUA", 1, 0.00, 150.00),
-    ("FAXINA", 1, 0.00, 500.00),
-    ("DIZIMO/OFERTA", 1, 0.00, 1000.00),
+    ("MERCADO CASAS", 1, 20.00, 1500.00),
+    ("ALMOÇO", 1, 59.00, 400.00),
+    ("AGUA", 1, 20.00, 150.00),
+    ("FAXINA", 1, 150.00, 500.00),
+    ("DIZIMO/OFERTA", 1, 1000.00, 1000.00),
     ("CELULARES", 1, 0.00, 100.00),
     ("ENTRETENIMENTO", 1, 0.00, 500.00),
     ("EMBASA", 10, 0.00, 120.00),
     ("ESCOLA LEVY", 10, 0.00, 400.00),
-    ("TEL/INTERN", 10, 0.00, 130.00),
+    ("TEL/INTERN", 10, 129.00, 130.00),
     ("LIGHT", 11, 0.00, 350.00),
 ]
 
@@ -86,21 +86,25 @@ def migrar_e_popular():
     cursor.execute("DELETE FROM sqlite_sequence WHERE name IN ('contas', 'recorrentes')")
 
     # 1. Inserir Cartões
-    for desc, dia, val in CARTOES:
+    for item in CARTOES:
+        desc, dia, val, val_ref = item[0], item[1], item[2], item[3]
+        pago = item[4] if len(item) > 4 else 0
+        data_pag = item[5] if len(item) > 5 else None
         cursor.execute(
             """
-            INSERT INTO contas (chat_id, descricao, valor, dia_vencimento, mes_ano, pago, recorrente, categoria, valor_referencia)
-            VALUES (?, ?, ?, ?, ?, 0, 1, 'Cartão', ?)
+            INSERT INTO contas (chat_id, descricao, valor, dia_vencimento, mes_ano, pago, data_pagamento, recorrente, categoria, valor_referencia)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1, 'Cartão', ?)
             """,
-            (CHAT_ID, desc, val, dia, MES_ANO, val),
+            (CHAT_ID, desc, val, dia, MES_ANO, pago, data_pag, val_ref),
         )
         cursor.execute(
             """
             INSERT INTO recorrentes (chat_id, descricao, valor, dia_vencimento, categoria, ativo, valor_referencia)
             VALUES (?, ?, ?, ?, 'Cartão', 1, ?)
             """,
-            (CHAT_ID, desc, val, dia, val),
+            (CHAT_ID, desc, val_ref, dia, val_ref),
         )
+
 
     # 2. Inserir Investimentos / Consórcios
     for desc, dia, val, val_ref in INVESTIMENTOS:
