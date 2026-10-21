@@ -32,24 +32,28 @@ def iniciar_bot_em_background():
     Inicia o bot do Telegram em segundo plano como subprocesso independente.
     O decorador @st.cache_resource garante que o bot seja iniciado APENAS UMA VEZ
     e continue rodando mesmo quando a página do Streamlit for atualizada.
+    Os logs são direcionados para bot.log para evitar estouro de buffer de pipe.
     """
     caminho_bot = os.path.join(os.path.dirname(__file__), "bot.py")
+    caminho_log = os.path.join(os.path.dirname(__file__), "bot.log")
     cmd = [sys.executable, "-X", "utf8", caminho_bot]
     try:
+        log_file = open(caminho_log, "a", encoding="utf-8", buffering=1)
         proc = subprocess.Popen(
             cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
         )
         return proc
     except Exception as e:
         st.sidebar.error(f"Erro ao iniciar processo do Bot: {e}")
         return None
 
-# Inicia o bot
+# Inicia ou recupera o bot (auto-restart se estiver parado)
 bot_proc = iniciar_bot_em_background()
+if bot_proc is None or bot_proc.poll() is not None:
+    iniciar_bot_em_background.clear()
+    bot_proc = iniciar_bot_em_background()
 
 # ==========================================
 # 2. AUTENTICAÇÃO DE ACESSO
@@ -99,6 +103,19 @@ else:
     if st.sidebar.button("🔄 Reiniciar Bot"):
         st.cache_resource.clear()
         st.rerun()
+
+with st.sidebar.expander("📄 Logs Recentes do Bot"):
+    caminho_log = os.path.join(os.path.dirname(__file__), "bot.log")
+    if os.path.exists(caminho_log):
+        try:
+            with open(caminho_log, "r", encoding="utf-8", errors="ignore") as f:
+                linhas = f.readlines()
+                ultimas = "".join(linhas[-15:])
+                st.code(ultimas or "Nenhum log registrado ainda.", language="text")
+        except Exception as e:
+            st.caption(f"Erro ao ler logs: {e}")
+    else:
+        st.caption("Arquivo de log ainda não gerado.")
 
 st.sidebar.markdown(f"👤 Logado como: **{AUTH_USER}**")
 if st.sidebar.button("🚪 Sair (Logout)", use_container_width=True):
