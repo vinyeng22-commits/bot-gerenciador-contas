@@ -35,12 +35,39 @@ from telegram.ext import (
 import config
 import database
 import helpers
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
 )
 logger = logging.getLogger("ContasBot")
+
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(b"Bot Contas Telegram: ONLINE 24/7\n")
+
+    def log_message(self, format, *args):
+        pass
+
+
+def start_health_server():
+    """Inicia um servidor HTTP leve para atender Render, Koyeb ou Fly.io e responder health checks."""
+    port_env = os.getenv("PORT")
+    if port_env:
+        try:
+            port = int(port_env)
+            server = HTTPServer(("0.0.0.0", port), HealthHandler)
+            t = threading.Thread(target=server.serve_forever, daemon=True)
+            t.start()
+            logger.info(f"Servidor HTTP de Health Check ativo na porta {port}")
+        except Exception as e:
+            logger.warning(f"Aviso ao iniciar servidor HTTP: {e}")
 
 # Sessões do assistente passo a passo (chave: user_id)
 WIZARD_STATES = {}
@@ -1425,6 +1452,9 @@ def main():
     if not config.BOT_TOKEN:
         print("[ERRO FATAL] TELEGRAM_BOT_TOKEN não configurado no arquivo .env!")
         sys.exit(1)
+
+    # Inicia servidor HTTP leve caso esteja rodando em plataforma de nuvem (Render, Koyeb, etc.)
+    start_health_server()
 
     print("=" * 60)
     print(" 🚀 INICIANDO BOT DE GERENCIAMENTO DE CONTAS TELEGRAM")
